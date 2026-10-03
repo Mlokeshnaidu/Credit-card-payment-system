@@ -59,7 +59,7 @@ export default function RegisterPage() {
                   type="text"
                   value={form.full_name}
                   onChange={handleChange}
-                  placeholder="John Doe"
+                  placeholder="Loki"
                   className="input-field"
                   required
                 />
@@ -73,7 +73,7 @@ export default function RegisterPage() {
                   type="text"
                   value={form.username}
                   onChange={handleChange}
-                  placeholder="johndoe"
+                  placeholder="loki"
                   className="input-field"
                   required
                 />
@@ -89,7 +89,7 @@ export default function RegisterPage() {
                 type="email"
                 value={form.email}
                 onChange={handleChange}
-                placeholder="john@example.com"
+                placeholder="loki@example.com"
                 className="input-field"
                 required
               />

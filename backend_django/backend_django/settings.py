@@ -122,3 +122,6 @@ SIMPLE_JWT = {
     'SIGNING_KEY': os.getenv('JWT_SECRET_KEY', SECRET_KEY),
     'ALGORITHM': 'HS256',
 }
+
+# FastAPI payment service
+FASTAPI_BASE_URL = os.getenv('FASTAPI_BASE_URL', 'http://fastapi:8001')

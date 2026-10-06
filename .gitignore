@@ -9,3 +9,6 @@ staticfiles/
 
 .coverage
 *.sqlite3
+
+# UI screenshots – not part of the deliverable
+screenshots/

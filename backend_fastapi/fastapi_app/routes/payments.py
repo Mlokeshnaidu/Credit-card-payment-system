@@ -179,3 +179,18 @@ async def get_payment_logs(
         "skip": skip,
         "limit": limit,
     }
+
+@router.get("/", summary="Payments service health check")
+async def payments_root():
+    """
+    Minimal endpoint that proves the payments service is up.
+    Returns a tiny JSON payload – useful for scripts / monitoring.
+    """
+    return {
+        "status": "ready",
+        "available_endpoints": [
+            "/process   (POST)",
+            "/status/{transaction_id}   (GET)",
+            "/logs   (GET)",
+        ],
+    }

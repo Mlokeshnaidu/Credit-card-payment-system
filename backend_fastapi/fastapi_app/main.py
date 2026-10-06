@@ -9,15 +9,18 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from .core.config import settings
 from .core.database import engine, Base
-from .routes import payments, auth, users, admin
+from .models import card  # Ensure models are loaded for metadata creation
+from .routes import payments, auth, users, admin, cards
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan - create tables on startup"""
     try:
+        # Drop all tables and recreate to ensure schema matches models (useful for development)
+        Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
-        print("FastAPI database tables created/verified")
+        print("FastAPI database tables dropped and recreated for schema sync")
     except Exception as e:
         print(f"Database connection warning: {e}")
     yield
@@ -48,6 +51,7 @@ app.include_router(payments.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(cards.router, prefix="/api")
 
 
 @app.get("/", tags=["Health"])

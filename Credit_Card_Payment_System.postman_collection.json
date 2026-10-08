@@ -778,6 +778,56 @@
               ]
             }
           }
+        },
+        {
+          "name": "Download Monthly Statement (PDF)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{django_url}}/transactions/statement/pdf/?year=2026&month=10",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "transactions",
+                "statement",
+                "pdf"
+              ],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2026"
+                },
+                {
+                  "key": "month",
+                  "value": "10"
+                }
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is application/pdf\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\"));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -1082,6 +1132,234 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Normal user forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: Toggle Card Block (Alert Triggered)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{django_url}}/admin-panel/cards/{{card_id}}/toggle-block/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "admin-panel",
+                "cards",
+                "{{card_id}}",
+                "toggle-block"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"is_blocked\": true, \"reason\": \"Administrative review\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Card block toggled\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: Update Credit Limit",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{django_url}}/admin-panel/cards/{{card_id}}/update-limit/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "admin-panel",
+                "cards",
+                "{{card_id}}",
+                "update-limit"
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"credit_limit\": 80000.0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Credit limit updated\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin: Monitor Card Activity",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{django_url}}/admin-panel/cards/{{card_id}}/activity/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "admin-panel",
+                "cards",
+                "{{card_id}}",
+                "activity"
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Card activity retrieved\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Dashboard Summary API (FastAPI)",
+      "item": [
+        {
+          "name": "Get Dashboard Summary (with JWT)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{fastapi_url}}/dashboard/summary",
+              "host": [
+                "{{fastapi_url}}"
+              ],
+              "path": [
+                "dashboard",
+                "summary"
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"Has total_transactions\", () => pm.expect(d).to.have.property(\"total_transactions\"));",
+                  "pm.test(\"Has total_amount_spent\", () => pm.expect(d).to.have.property(\"total_amount_spent\"));",
+                  "pm.test(\"Has current_month_spending\", () => pm.expect(d).to.have.property(\"current_month_spending\"));",
+                  "pm.test(\"Has available_credit_limit\", () => pm.expect(d).to.have.property(\"available_credit_limit\"));",
+                  "pm.test(\"Has last_5_transactions array\", () => pm.expect(d.last_5_transactions).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Dashboard Summary (Missing JWT - expect 401)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{fastapi_url}}/dashboard/summary",
+              "host": [
+                "{{fastapi_url}}"
+              ],
+              "path": [
+                "dashboard",
+                "summary"
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Unauthorized 401 on missing JWT\", () => pm.response.to.have.status(401));"
                 ]
               }
             }

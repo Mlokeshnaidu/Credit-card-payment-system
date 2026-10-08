@@ -1,3 +1,7 @@
 # FastAPI Models Package
-from sqlalchemy.ext.declarative import declarative_base
-Base = declarative_base()
+from ..core.database import Base
+from .user import User, PaymentLog
+from .card import Card
+from .transaction import Transaction
+
+__all__ = ["Base", "User", "PaymentLog", "Card", "Transaction"]

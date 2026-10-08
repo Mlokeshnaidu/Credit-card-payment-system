@@ -16,8 +16,8 @@ class PaymentRequest(BaseModel):
     transaction_id: str = Field(..., description="Unique transaction ID from Django")
     amount: float = Field(..., gt=0, description="Payment amount (must be positive)")
     currency: str = Field(default="INR", max_length=3)
-    card_last_four: str = Field(..., min_length=4, max_length=4)
-    card_type: str = Field(..., description="CREDIT or DEBIT")
+    card_last_four: Optional[str] = Field(default="", min_length=4, max_length=4)
+    card_type: Optional[str] = Field(default="", description="CREDIT or DEBIT")
     user_id: int
     merchant_name: Optional[str] = ""
     description: Optional[str] = ""
@@ -95,8 +95,8 @@ async def process_payment(payment: PaymentRequest, db: Session = Depends(get_db)
             user_id=payment.user_id,
             amount=str(payment.amount),
             currency=payment.currency,
-            card_last_four=payment.card_last_four,
-            card_type=payment.card_type,
+            card_last_four=payment.card_last_four if payment.card_last_four else None,
+            card_type=payment.card_type if payment.card_type else None,
             status=result["status"],
             failure_reason=result["failure_reason"],
             processing_time_ms=processing_ms,

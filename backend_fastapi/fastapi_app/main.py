@@ -1,26 +1,26 @@
 """
 Credit Card Payment System - FastAPI Main Application
 Module 3: Payment Processing Service
+Module 9: API Documentation (Swagger /docs enabled)
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+
 from .core.config import settings
 from .core.database import engine, Base
-from .models import card  # Ensure models are loaded for metadata creation
-from .routes import payments, auth, users, admin, cards
+from .models import User, Card, Transaction, PaymentLog  # Ensure all models are loaded
+from .core.security import verify_jwt_token, security_bearer
+from .routes import payments, auth, users, admin, cards, dashboard
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan - create tables on startup"""
+    """Application lifespan - safely ensure tables exist on startup without dropping data"""
     try:
-        # Drop all tables and recreate to ensure schema matches models (useful for development)
-        Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
-        print("FastAPI database tables dropped and recreated for schema sync")
+        print("FastAPI database tables verified/created successfully")
     except Exception as e:
         print(f"Database connection warning: {e}")
     yield
@@ -37,10 +37,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS Middleware
+# CORS Middleware - allows frontend and django requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000", "http://127.0.0.1:3000", "http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -53,6 +60,10 @@ app.include_router(users.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(cards.router, prefix="/api")
 
+# Dashboard summary is accessible at both /dashboard/summary and /api/dashboard/summary
+app.include_router(dashboard.router, prefix="/api")
+app.include_router(dashboard.router)
+
 
 @app.get("/", tags=["Health"])
 async def root():
@@ -63,6 +74,7 @@ async def root():
         "status": "running",
         "docs": "/docs",
         "modules": {
+            "dashboard_summary": "/dashboard/summary",
             "payment_processing": "/api/payments",
             "auth_verification": "/api/auth",
             "user_lookup": "/api/users",

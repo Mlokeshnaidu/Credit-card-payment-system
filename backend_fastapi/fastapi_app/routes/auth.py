@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from jose import jwt, JWTError
 from passlib.context import CryptContext
+from fastapi.security import OAuth2PasswordRequestForm
 from datetime import datetime, timedelta
 from ..core.config import settings
 
@@ -60,3 +61,15 @@ async def verify_jwt_token(token: str):
     """
     payload = verify_token(token)
     return {"valid": True, "payload": payload}
+
+# ---------- OAuth2 password flow (token endpoint) ----------
+@router.post("/token", response_model=TokenResponse, summary="Obtain JWT via username & password")
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    if form_data.username != settings.BASIC_USERNAME or form_data.password != settings.BASIC_PASSWORD:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    access_token = create_access_token({"sub": form_data.username})
+    return TokenResponse(access_token=access_token, expires_in=settings.JWT_EXPIRY_MINUTES)

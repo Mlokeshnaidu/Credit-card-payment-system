@@ -522,6 +522,100 @@
               "type": "noauth"
             }
           }
+        },
+        {
+          "name": "Dashboard Summary (FastAPI with JWT)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{fastapi_url}}/dashboard/summary",
+              "host": [
+                "{{fastapi_url}}"
+              ],
+              "path": [
+                "dashboard",
+                "summary"
+              ]
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Dashboard summary has all required metrics', () => {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json).to.have.property('total_transactions');",
+                  "    pm.expect(json).to.have.property('total_amount_spent');",
+                  "    pm.expect(json).to.have.property('current_month_spending');",
+                  "    pm.expect(json).to.have.property('available_credit_limit');",
+                  "    pm.expect(json).to.have.property('last_5_transactions');",
+                  "    pm.expect(json.last_5_transactions).to.be.an('array');",
+                  "    pm.expect(json.last_5_transactions.length).to.be.at.most(5);",
+                  "});",
+                  "pm.test('Last 5 transactions schema matches requirements', () => {",
+                  "    var json = pm.response.json();",
+                  "    if (json.last_5_transactions.length > 0) {",
+                  "        var t = json.last_5_transactions[0];",
+                  "        pm.expect(t).to.have.property('amount');",
+                  "        pm.expect(t).to.have.property('masked_card_number');",
+                  "        pm.expect(t).to.have.property('date');",
+                  "        pm.expect(t).to.have.property('status');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard Summary Without Token (Expect 401)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{fastapi_url}}/dashboard/summary",
+              "host": [
+                "{{fastapi_url}}"
+              ],
+              "path": [
+                "dashboard",
+                "summary"
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthorized when token is missing', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

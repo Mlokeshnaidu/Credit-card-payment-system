@@ -5,7 +5,7 @@ class Card(Base):
     __tablename__ = "cards"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, nullable=True)  # Made optional for demo purposes
     last_four_digits = Column(String(4), nullable=False)  # renamed to match DB column
     # Optional additional fields for future use
     card_holder_name = Column(String(255), nullable=True)

@@ -1,4 +1,4 @@
-import { djangoAPI } from './axios';
+import { djangoAPI, fastapiAPI } from './axios';
 
 export const authAPI = {
   register: (data) => djangoAPI.post('/api/auth/register/', data),
@@ -14,6 +14,10 @@ export const cardAPI = {
   addCard: (data) => djangoAPI.post('/api/cards/', data),
   deleteCard: (id) => djangoAPI.delete(`/api/cards/${id}/`),
   setDefault: (id) => djangoAPI.post(`/api/cards/${id}/set-default/`),
+};
+
+export const dashboardAPI = {
+  getSummary: () => fastapiAPI.get('/dashboard/summary'),
 };
 
 export const transactionAPI = {

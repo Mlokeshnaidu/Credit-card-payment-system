@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
 from sqlalchemy.orm import Session
 from ..core.database import get_db
 from ..models.card import Card   # Adjust if your model lives elsewhere
@@ -11,7 +12,14 @@ class CardCreate(BaseModel):
     expiry_month: int
     expiry_year: int
     cvv: str
-    card_type: str
+    card_type: str = "VISA"  # default if not supplied
+    # Optional extra fields matching DB schema
+    card_holder_name: Optional[str] = "Test User"
+    masked_card_number: Optional[str] = None
+    bank_name: Optional[str] = None
+    is_default: Optional[int] = 0
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 class CardResponse(BaseModel):
     id: int
@@ -26,6 +34,14 @@ async def create_card(payload: CardCreate, db: Session = Depends(get_db)):
         user_id=1,                         # 👉‑Replace with real user handling later
         last_four_digits=payload.card_number[-4:],
         card_type=payload.card_type,
+        card_holder_name=payload.card_holder_name,
+        masked_card_number=payload.masked_card_number,
+        expiry_month=payload.expiry_month,
+        expiry_year=payload.expiry_year,
+        bank_name=payload.bank_name,
+        is_default=payload.is_default,
+        created_at=payload.created_at,
+        updated_at=payload.updated_at,
     )
     db.add(new_card)
     db.commit()

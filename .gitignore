@@ -12,3 +12,5 @@ staticfiles/
 
 # UI screenshots – not part of the deliverable
 screenshots/
+
+*.db

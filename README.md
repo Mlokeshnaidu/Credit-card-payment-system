@@ -1,4 +1,4 @@
-﻿# Credit Card Payment System
+# Credit Card Payment System
 
 A full-stack fintech demo: users save cards (masked only), make simulated payments, and admins monitor everything.
 **No real payment gateway is used. CVV is never collected or stored.**
@@ -116,6 +116,7 @@ Postman collection: `Credit_Card_Payment_System.postman_collection.json` (28 req
 
 | Method | Endpoint | Description |
 |---|---|---|
+| GET | `/dashboard/summary` | User dashboard metrics (total spent, available credit, month spending, last 5 txns) |
 | POST | `/api/payments/process` | Simulate a payment |
 | GET | `/api/payments/status/{transaction_id}` | Payment status |
 | GET | `/api/payments/logs` | Payment logs |

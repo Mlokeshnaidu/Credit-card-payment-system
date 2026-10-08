@@ -15,12 +15,18 @@ const fastapiAPI = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor - add JWT token
-djangoAPI.interceptors.request.use((config) => {
+// Request interceptor helper - attach JWT access token
+const attachAuthToken = (config) => {
   const token = localStorage.getItem('access_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   return config;
-});
+};
+
+djangoAPI.interceptors.request.use(attachAuthToken, (error) => Promise.reject(error));
+fastapiAPI.interceptors.request.use(attachAuthToken, (error) => Promise.reject(error));
 
 // Response interceptor - auto refresh token on 401
 djangoAPI.interceptors.response.use(
@@ -31,6 +37,7 @@ djangoAPI.interceptors.response.use(
       original._retry = true;
       try {
         const refresh = localStorage.getItem('refresh_token');
+        if (!refresh) throw new Error('No refresh token');
         const resp = await axios.post(`${DJANGO_BASE}/api/auth/token/refresh/`, { refresh });
         const newAccess = resp.data.access;
         localStorage.setItem('access_token', newAccess);
@@ -39,6 +46,29 @@ djangoAPI.interceptors.response.use(
       } catch {
         localStorage.clear();
         window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+fastapiAPI.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+      try {
+        const refresh = localStorage.getItem('refresh_token');
+        if (!refresh) throw new Error('No refresh token');
+        const resp = await axios.post(`${DJANGO_BASE}/api/auth/token/refresh/`, { refresh });
+        const newAccess = resp.data.access;
+        localStorage.setItem('access_token', newAccess);
+        original.headers.Authorization = `Bearer ${newAccess}`;
+        return fastapiAPI(original);
+      } catch {
+        // If refresh fails, let caller handle error state
+        return Promise.reject(error);
       }
     }
     return Promise.reject(error);

@@ -19,6 +19,8 @@ class Card(models.Model):
     expiry_year = models.IntegerField()
     bank_name = models.CharField(max_length=100, blank=True)
     is_default = models.BooleanField(default=False)
+    is_blocked = models.BooleanField(default=False)
+    credit_limit = models.DecimalField(max_digits=12, decimal_places=2, default=50000.00)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -29,7 +31,28 @@ class Card(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.masked_card_number} ({self.card_type})"
+        status_str = " [BLOCKED]" if self.is_blocked else ""
+        return f"{self.user.username} - {self.masked_card_number} ({self.card_type}){status_str}"
+
+    def get_total_spent(self):
+        """Calculate total successful spending on this card"""
+        from transactions.models import Transaction
+        from django.db.models import Sum
+        result = Transaction.objects.filter(card=self, status='SUCCESS').aggregate(total=Sum('amount'))
+        return float(result['total'] or 0.0)
+
+    def get_available_limit(self):
+        """Calculate remaining available credit limit"""
+        spent = self.get_total_spent()
+        return max(float(self.credit_limit) - spent, 0.0)
+
+    def is_limit_below_threshold(self, threshold_percent=10.0):
+        """Check if available credit is below threshold percentage of total limit"""
+        limit = float(self.credit_limit)
+        if limit <= 0:
+            return False
+        available = self.get_available_limit()
+        return (available / limit) * 100.0 < threshold_percent
 
     def save(self, *args, **kwargs):
         # If this card is set as default, unset all others for this user

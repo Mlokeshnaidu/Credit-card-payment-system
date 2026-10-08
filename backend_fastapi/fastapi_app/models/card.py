@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Numeric
 from ..core.database import Base
 
 class Card(Base):
@@ -17,6 +17,8 @@ class Card(Base):
     created_at = Column(String, nullable=True)
     updated_at = Column(String, nullable=True)
     card_type = Column(String(20), nullable=False)
+    credit_limit = Column(Numeric(12, 2), default=50000.00, nullable=True)
+    is_blocked = Column(Integer, default=0, nullable=True)
 
     def __repr__(self):
         return f"<Card id={self.id} user_id={self.user_id} last_four={self.last_four_digits}>"

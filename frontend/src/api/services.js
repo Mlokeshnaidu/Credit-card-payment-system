@@ -24,6 +24,11 @@ export const transactionAPI = {
   getTransactions: (params) => djangoAPI.get('/api/transactions/', { params }),
   makePayment: (data) => djangoAPI.post('/api/transactions/pay/', data),
   getTransaction: (id) => djangoAPI.get(`/api/transactions/${id}/`),
+  downloadStatementPDF: (params) =>
+    djangoAPI.get('/api/transactions/statement/pdf/', {
+      params,
+      responseType: 'blob',
+    }),
 };
 
 export const adminAPI = {
@@ -31,6 +36,9 @@ export const adminAPI = {
   getUsers: (params) => djangoAPI.get('/api/admin-panel/users/', { params }),
   toggleUser: (id) => djangoAPI.patch(`/api/admin-panel/users/${id}/toggle/`),
   getCards: (params) => djangoAPI.get('/api/admin-panel/cards/', { params }),
+  toggleCardBlock: (id, data) => djangoAPI.patch(`/api/admin-panel/cards/${id}/toggle-block/`, data || {}),
+  updateCreditLimit: (id, credit_limit) => djangoAPI.patch(`/api/admin-panel/cards/${id}/update-limit/`, { credit_limit }),
+  getCardActivity: (id) => djangoAPI.get(`/api/admin-panel/cards/${id}/activity/`),
   getTransactions: (params) => djangoAPI.get('/api/admin-panel/transactions/', { params }),
   exportCSV: (params) => djangoAPI.get('/api/admin-panel/transactions/export/', { params, responseType: 'blob' }),
   getDailySummary: (date) => djangoAPI.get('/api/admin-panel/daily-summary/', { params: { date } }),

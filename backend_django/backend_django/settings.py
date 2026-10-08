@@ -125,3 +125,8 @@ SIMPLE_JWT = {
 
 # FastAPI payment service
 FASTAPI_BASE_URL = os.getenv('FASTAPI_BASE_URL', 'http://fastapi:8001')
+
+# Automated Email Notification System
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'alerts@ccpay.com')
+

@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS cards (
     expiry_year INT NOT NULL,
     bank_name VARCHAR(100) DEFAULT '',
     is_default TINYINT(1) NOT NULL DEFAULT 0,
+    is_blocked TINYINT(1) NOT NULL DEFAULT 0,
+    credit_limit DECIMAL(12, 2) NOT NULL DEFAULT 50000.00,
     created_at DATETIME(6) NOT NULL,
     updated_at DATETIME(6) NOT NULL,
     CONSTRAINT fk_cards_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,

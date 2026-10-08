@@ -10,3 +10,4 @@ gunicorn>=21.0
 requests>=2.31
 drf-yasg>=1.20
 coverage>=7.0
+reportlab>=4.0

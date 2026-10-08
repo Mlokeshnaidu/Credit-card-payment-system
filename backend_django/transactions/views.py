@@ -14,6 +14,8 @@ from .serializers import TransactionSerializer, TransactionCreateSerializer
 from .filters import TransactionFilter
 from cards.models import Card
 from accounts.models import AdminLog
+from notifications.services import send_high_value_transaction_alert, send_low_credit_limit_alert
+from .statement_pdf import build_monthly_statement_pdf
 
 
 def log_action(user, action, description='', ip=None):
@@ -86,6 +88,13 @@ def make_payment(request):
     data = serializer.validated_data
     card = get_object_or_404(Card, id=data['card_id'], user=request.user)
 
+    # Security Check: Reject if card is blocked
+    if card.is_blocked:
+        return Response({
+            'error': 'Card is blocked. Payment cannot be processed.',
+            'is_blocked': True
+        }, status=status.HTTP_400_BAD_REQUEST)
+
     # Create transaction with PENDING status
     transaction_id = f"TXN-{uuid.uuid4().hex[:12].upper()}"
     transaction = Transaction.objects.create(
@@ -138,6 +147,15 @@ def make_payment(request):
                f'Payment {transaction.transaction_id}: {transaction.amount} {transaction.currency} - {transaction.status}',
                get_ip(request))
 
+    # Sprint Item 1: Automated Email Alert when transaction amount exceeds ₹5000
+    if float(transaction.amount) > 5000:
+        send_high_value_transaction_alert(request.user, transaction)
+
+    # Sprint Item 1: Automated Email Alert when available credit limit falls below 10%
+    if transaction.status == 'SUCCESS' and card.card_type == 'CREDIT':
+        if card.is_limit_below_threshold(10.0):
+            send_low_credit_limit_alert(request.user, card)
+
     return Response({
         'message': f'Payment {transaction.status.lower()}',
         'transaction': TransactionSerializer(transaction).data
@@ -156,6 +174,47 @@ def update_transaction_status(request, transaction_id):
         transaction.status = new_status
         transaction.failure_reason = request.data.get('failure_reason', '')
         transaction.save()
+
+        # Check notifications if transaction status transitioned to SUCCESS
+        if new_status == 'SUCCESS':
+            if float(transaction.amount) > 5000:
+                send_high_value_transaction_alert(transaction.user, transaction)
+            if transaction.card and transaction.card.card_type == 'CREDIT':
+                if transaction.card.is_limit_below_threshold(10.0):
+                    send_low_credit_limit_alert(transaction.user, transaction.card)
+
         return Response({'message': 'Transaction status updated', 'status': new_status})
     except Transaction.DoesNotExist:
         return Response({'error': 'Transaction not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def statement_pdf(request):
+    """
+    Sprint Item 3: Backend endpoint to generate downloadable monthly statements
+    Accepts month and year query params, returns downloadable PDF
+    """
+    import datetime
+    now = datetime.datetime.now()
+    try:
+        year = int(request.query_params.get('year', now.year))
+    except (ValueError, TypeError):
+        year = now.year
+
+    try:
+        month = int(request.query_params.get('month', now.month))
+    except (ValueError, TypeError):
+        month = now.month
+
+    card_id = request.query_params.get('card_id')
+    if card_id:
+        try:
+            card_id = int(card_id)
+        except (ValueError, TypeError):
+            card_id = None
+
+    buf = build_monthly_statement_pdf(request.user, year, month, card_id=card_id)
+    response = HttpResponse(buf.getvalue(), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="statement_{year}_{month:02d}.pdf"'
+    return response

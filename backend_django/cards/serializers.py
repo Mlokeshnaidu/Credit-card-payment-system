@@ -37,11 +37,29 @@ class CardCreateSerializer(serializers.Serializer):
 
 
 class CardSerializer(serializers.ModelSerializer):
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    user_full_name = serializers.CharField(source='user.full_name', read_only=True)
+    available_credit_limit = serializers.SerializerMethodField()
+    total_spent = serializers.SerializerMethodField()
+
     class Meta:
         model = Card
         fields = [
             'id', 'card_holder_name', 'masked_card_number', 'last_four_digits',
             'card_type', 'expiry_month', 'expiry_year', 'bank_name',
-            'is_default', 'created_at'
+            'is_default', 'is_blocked', 'credit_limit', 'available_credit_limit',
+            'total_spent', 'user_email', 'user_full_name', 'created_at'
         ]
-        read_only_fields = ['id', 'masked_card_number', 'last_four_digits', 'created_at']
+        read_only_fields = [
+            'id', 'masked_card_number', 'last_four_digits', 'created_at',
+            'available_credit_limit', 'total_spent', 'user_email', 'user_full_name'
+        ]
+
+    def get_available_limit(self, obj):
+        return obj.get_available_limit()
+
+    def get_available_credit_limit(self, obj):
+        return obj.get_available_limit()
+
+    def get_total_spent(self, obj):
+        return obj.get_total_spent()

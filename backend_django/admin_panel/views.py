@@ -13,6 +13,8 @@ from transactions.models import Transaction
 from accounts.serializers import UserSerializer
 from cards.serializers import CardSerializer
 from transactions.serializers import TransactionSerializer
+from notifications.services import send_card_blocked_alert
+
 
 
 def is_admin_user(user):
@@ -106,14 +108,32 @@ def admin_toggle_user(request, user_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def admin_cards(request):
-    """View all cards - Module 5"""
+    """View all cards - Module 5 & Sprint Item 4"""
     if not is_admin_user(request.user):
         return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
-    cards = Card.objects.all().select_related('user')
+    cards = Card.objects.all().select_related('user').order_by('-created_at')
     user_id = request.query_params.get('user_id')
     if user_id:
         cards = cards.filter(user_id=user_id)
+
+    status_filter = request.query_params.get('status')
+    if status_filter:
+        if status_filter.lower() == 'blocked':
+            cards = cards.filter(is_blocked=True)
+        elif status_filter.lower() == 'active':
+            cards = cards.filter(is_blocked=False)
+
+    search = request.query_params.get('search', '').strip()
+    if search:
+        cards = cards.filter(
+            Q(card_holder_name__icontains=search) |
+            Q(last_four_digits__icontains=search) |
+            Q(masked_card_number__icontains=search) |
+            Q(bank_name__icontains=search) |
+            Q(user__email__icontains=search) |
+            Q(user__username__icontains=search)
+        )
 
     page_size = int(request.query_params.get('page_size', 10))
     page = int(request.query_params.get('page', 1))
@@ -122,7 +142,159 @@ def admin_cards(request):
     total = cards.count()
 
     serializer = CardSerializer(cards[start:end], many=True)
-    return Response({'cards': serializer.data, 'count': total})
+    return Response({'cards': serializer.data, 'count': total, 'page': page, 'page_size': page_size})
+
+
+@api_view(['PATCH', 'POST'])
+@permission_classes([IsAuthenticated])
+def admin_toggle_card_block(request, card_id):
+    """
+    Sprint Item 4: Block / Unblock cards with proper admin access controls
+    Triggers automated email alert on block!
+    """
+    if not is_admin_user(request.user):
+        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        card = Card.objects.select_related('user').get(id=card_id)
+    except Card.DoesNotExist:
+        return Response({'error': 'Card not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Allow explicit target state or toggle
+    if 'is_blocked' in request.data:
+        card.is_blocked = bool(request.data['is_blocked'])
+    else:
+        card.is_blocked = not card.is_blocked
+    card.save()
+
+    action_label = "blocked" if card.is_blocked else "unblocked"
+    reason = request.data.get('reason', 'Administrative action by security officer')
+
+    AdminLog.objects.create(
+        user=request.user,
+        action='CARD_BLOCK' if card.is_blocked else 'CARD_UNBLOCK',
+        description=f"Card {card.masked_card_number} (Owner: {card.user.email}) {action_label}. Reason: {reason}",
+        ip_address=request.META.get('REMOTE_ADDR')
+    )
+
+    # Sprint Item 1: Trigger email notification if blocked
+    if card.is_blocked:
+        send_card_blocked_alert(card.user, card, reason=reason)
+
+    return Response({
+        'message': f"Card ending in {card.last_four_digits} has been {action_label}.",
+        'is_blocked': card.is_blocked,
+        'card': CardSerializer(card).data
+    })
+
+
+@api_view(['PATCH', 'PUT', 'POST'])
+@permission_classes([IsAuthenticated])
+def admin_update_card_credit_limit(request, card_id):
+    """
+    Sprint Item 4: Update credit limits with proper admin access controls and validation
+    """
+    if not is_admin_user(request.user):
+        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        card = Card.objects.select_related('user').get(id=card_id)
+    except Card.DoesNotExist:
+        return Response({'error': 'Card not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    new_limit = request.data.get('credit_limit')
+    if new_limit is None:
+        return Response({'error': 'credit_limit field is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        limit_val = float(new_limit)
+        if limit_val <= 0:
+            return Response({'error': 'Credit limit must be greater than zero'}, status=status.HTTP_400_BAD_REQUEST)
+        if limit_val > 10000000:
+            return Response({'error': 'Credit limit cannot exceed ₹10,000,000'}, status=status.HTTP_400_BAD_REQUEST)
+    except (ValueError, TypeError):
+        return Response({'error': 'Invalid numeric credit limit format'}, status=status.HTTP_400_BAD_REQUEST)
+
+    old_limit = float(card.credit_limit)
+    card.credit_limit = limit_val
+    card.save()
+
+    AdminLog.objects.create(
+        user=request.user,
+        action='CREDIT_LIMIT_UPDATE',
+        description=f"Updated credit limit for card {card.masked_card_number} from ₹{old_limit:,.2f} to ₹{limit_val:,.2f}",
+        ip_address=request.META.get('REMOTE_ADDR')
+    )
+
+    return Response({
+        'message': f"Credit limit for card ending in {card.last_four_digits} updated to ₹{limit_val:,.2f}",
+        'credit_limit': float(card.credit_limit),
+        'available_limit': card.get_available_limit(),
+        'card': CardSerializer(card).data
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_card_activity(request, card_id):
+    """
+    Sprint Item 4: Monitor card activity with proper access controls
+    Returns transaction ledger and audit logs for the specified card
+    """
+    if not is_admin_user(request.user):
+        return Response({'error': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        card = Card.objects.select_related('user').get(id=card_id)
+    except Card.DoesNotExist:
+        return Response({'error': 'Card not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    txns = Transaction.objects.filter(card=card).order_by('-created_at')
+    total_txns = txns.count()
+    success_count = txns.filter(status='SUCCESS').count()
+    failed_count = txns.filter(status='FAILED').count()
+    pending_count = txns.filter(status='PENDING').count()
+    total_spent = txns.filter(status='SUCCESS').aggregate(total=Sum('amount'))['total'] or 0
+
+    # Get recent 25 transactions
+    recent_transactions = TransactionSerializer(txns[:25], many=True).data
+
+    # Related logs
+    logs = AdminLog.objects.filter(
+        Q(description__icontains=card.masked_card_number) |
+        Q(description__icontains=card.last_four_digits)
+    ).order_by('-timestamp')[:20]
+
+    log_data = [{
+        'id': l.id,
+        'action': l.action,
+        'description': l.description,
+        'timestamp': l.timestamp,
+        'ip_address': l.ip_address,
+    } for l in logs]
+
+    return Response({
+        'card': CardSerializer(card).data,
+        'user': {
+            'id': card.user.id,
+            'email': card.user.email,
+            'username': card.user.username,
+            'full_name': card.user.full_name,
+        },
+        'metrics': {
+            'total_transactions': total_txns,
+            'success_count': success_count,
+            'failed_count': failed_count,
+            'pending_count': pending_count,
+            'total_spent': float(total_spent),
+            'credit_limit': float(card.credit_limit),
+            'available_credit_limit': card.get_available_limit(),
+            'is_blocked': card.is_blocked,
+        },
+        'recent_transactions': recent_transactions,
+        'audit_logs': log_data
+    })
+
 
 
 @api_view(['GET'])

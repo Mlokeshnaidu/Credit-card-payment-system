@@ -10,7 +10,7 @@ export const authAPI = {
 };
 
 export const cardAPI = {
-  getCards: () => djangoAPI.get('/api/cards/'),
+  getCards: (params) => djangoAPI.get('/api/cards/', { params }),
   addCard: (data) => djangoAPI.post('/api/cards/', data),
   deleteCard: (id) => djangoAPI.delete(`/api/cards/${id}/`),
   setDefault: (id) => djangoAPI.post(`/api/cards/${id}/set-default/`),
@@ -29,12 +29,17 @@ export const transactionAPI = {
       params,
       responseType: 'blob',
     }),
+  getAnalyticsSummary: () => djangoAPI.get('/api/transactions/analytics/summary/'),
+  getMonthlyAnalytics: (months = 6) => djangoAPI.get('/api/transactions/analytics/monthly/', { params: { months } }),
+  getCategoryAnalytics: () => djangoAPI.get('/api/transactions/analytics/categories/'),
+  getUtilizationAnalytics: () => djangoAPI.get('/api/transactions/analytics/utilization/'),
 };
 
 export const adminAPI = {
   getDashboard: () => djangoAPI.get('/api/admin-panel/dashboard/'),
   getUsers: (params) => djangoAPI.get('/api/admin-panel/users/', { params }),
   toggleUser: (id) => djangoAPI.patch(`/api/admin-panel/users/${id}/toggle/`),
+  updateUserRole: (id, role) => djangoAPI.patch(`/api/admin-panel/users/${id}/role/`, { role }),
   getCards: (params) => djangoAPI.get('/api/admin-panel/cards/', { params }),
   toggleCardBlock: (id, data) => djangoAPI.patch(`/api/admin-panel/cards/${id}/toggle-block/`, data || {}),
   updateCreditLimit: (id, credit_limit) => djangoAPI.patch(`/api/admin-panel/cards/${id}/update-limit/`, { credit_limit }),
@@ -43,4 +48,9 @@ export const adminAPI = {
   exportCSV: (params) => djangoAPI.get('/api/admin-panel/transactions/export/', { params, responseType: 'blob' }),
   getDailySummary: (date) => djangoAPI.get('/api/admin-panel/daily-summary/', { params: { date } }),
   getLogs: (params) => djangoAPI.get('/api/admin-panel/logs/', { params }),
+  getFraudLogs: (params) => djangoAPI.get('/api/admin-panel/fraud-logs/', { params }),
+  reviewFraudLog: (id, data) => djangoAPI.patch(`/api/admin-panel/fraud-logs/${id}/review/`, data),
+  getSystemHealth: () => djangoAPI.get('/api/admin-panel/system-health/'),
+  exportAnalyticsCSV: () => djangoAPI.get('/api/admin-panel/analytics/export/csv/', { responseType: 'blob' }),
+  exportAnalyticsPDF: () => djangoAPI.get('/api/admin-panel/analytics/export/pdf/', { responseType: 'blob' }),
 };

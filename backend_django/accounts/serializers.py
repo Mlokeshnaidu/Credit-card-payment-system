@@ -6,10 +6,11 @@ from .models import User
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8, validators=[validate_password])
     confirm_password = serializers.CharField(write_only=True)
+    role = serializers.ChoiceField(choices=User.ROLE_CHOICES, default='CUSTOMER', required=False)
 
     class Meta:
         model = User
-        fields = ['email', 'username', 'full_name', 'phone', 'password', 'confirm_password']
+        fields = ['email', 'username', 'full_name', 'phone', 'role', 'password', 'confirm_password']
 
     def validate(self, attrs):
         if attrs['password'] != attrs['confirm_password']:
@@ -30,8 +31,11 @@ class LoginSerializer(serializers.Serializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'full_name', 'phone', 'is_admin', 'date_joined', 'last_login']
-        read_only_fields = ['id', 'date_joined', 'last_login', 'is_admin']
+        fields = [
+            'id', 'email', 'username', 'full_name', 'phone', 'role',
+            'is_admin', 'is_staff', 'is_active', 'date_joined', 'last_login'
+        ]
+        read_only_fields = ['id', 'date_joined', 'last_login', 'is_admin', 'is_staff']
 
 
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
@@ -49,3 +53,7 @@ class ChangePasswordSerializer(serializers.Serializer):
         if attrs['new_password'] != attrs['confirm_new_password']:
             raise serializers.ValidationError({"confirm_new_password": "Passwords do not match."})
         return attrs
+
+
+class UserRoleUpdateSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=User.ROLE_CHOICES)

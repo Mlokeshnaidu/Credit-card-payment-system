@@ -1366,6 +1366,462 @@
           ]
         }
       ]
+    },
+    {
+      "name": "7. Fraud Detection & Alerting",
+      "item": [
+        {
+          "name": "View Fraud Logs (Admin/Support)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{django_url}}/admin-panel/fraud-logs/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "admin-panel",
+                "fraud-logs",
+                ""
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test(\"Contains results array\", () => pm.expect(res.results).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review Fraud Log (Admin/Support)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{django_url}}/admin-panel/fraud-logs/1/review/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "admin-panel",
+                "fraud-logs",
+                "1",
+                "review",
+                ""
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONFIRMED_FRAUD\",\n  \"admin_notes\": \"Verified suspicious IP velocity across distinct regions.\"\n}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200 or 404\", () => pm.expect([200, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "8. Analytics & Advanced Search",
+      "item": [
+        {
+          "name": "Analytics Summary (Django)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{django_url}}/transactions/analytics/summary/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "transactions",
+                "analytics",
+                "summary",
+                ""
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"Has total_spent\", () => pm.expect(d).to.have.property(\"total_spent\"));",
+                  "pm.test(\"Has credit_utilization_pct\", () => pm.expect(d).to.have.property(\"credit_utilization_pct\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Monthly Spending Trends",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{django_url}}/transactions/analytics/monthly/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "transactions",
+                "analytics",
+                "monthly",
+                ""
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns array of monthly data\", () => pm.expect(pm.response.json()).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Category-Wise Expenses",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{django_url}}/transactions/analytics/categories/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "transactions",
+                "analytics",
+                "categories",
+                ""
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns array of category objects\", () => pm.expect(pm.response.json()).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Card Utilization Percentage",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{django_url}}/transactions/analytics/utilization/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "transactions",
+                "analytics",
+                "utilization",
+                ""
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Returns array of card utilization\", () => pm.expect(pm.response.json()).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Advanced Transaction Search (Masked Card, Amount, Ordering)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{django_url}}/transactions/?card_search=1111&ordering=-amount&min_amount=500&status=SUCCESS",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "transactions",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "card_search",
+                  "value": "1111"
+                },
+                {
+                  "key": "ordering",
+                  "value": "-amount"
+                },
+                {
+                  "key": "min_amount",
+                  "value": "500"
+                },
+                {
+                  "key": "status",
+                  "value": "SUCCESS"
+                }
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "const res = pm.response.json();",
+                  "pm.test(\"Returns paginated results\", () => pm.expect(res.results).to.be.an(\"array\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "9. Monitoring & Final Exports",
+      "item": [
+        {
+          "name": "System Health & Response Times (Admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{django_url}}/admin-panel/system-health/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "admin-panel",
+                "system-health",
+                ""
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.test(\"Has status healthy\", () => pm.expect(data.status).to.eql(\"HEALTHY\"));",
+                  "pm.test(\"Has average_latency_ms\", () => pm.expect(data).to.have.property(\"average_latency_ms\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export Analytics Summary (CSV)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{django_url}}/admin-panel/analytics/export/csv/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "admin-panel",
+                "analytics",
+                "export",
+                "csv",
+                ""
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is text/csv\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"text/csv\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export Analytics Executive Summary (PDF)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{django_url}}/admin-panel/analytics/export/pdf/",
+              "host": [
+                "{{django_url}}"
+              ],
+              "path": [
+                "admin-panel",
+                "analytics",
+                "export",
+                "pdf",
+                ""
+              ]
+            },
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type is application/pdf\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/pdf\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

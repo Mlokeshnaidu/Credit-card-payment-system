@@ -158,3 +158,46 @@ CCPay Credit Operations Team
         action_tag='EMAIL_LOW_LIMIT',
         description=f"Low credit limit alert for {card.masked_card_number} (₹{a_limit:,.2f} / ₹{c_limit:,.2f} - {pct:.1f}%)"
     )
+
+
+def send_fraud_alert(user, transaction, rule_triggered="SUSPICIOUS_ACTIVITY", risk_score=50, details=""):
+    """
+    Automated email alert triggered when fraud detection rules flag a transaction.
+    """
+    amount = float(transaction.amount)
+    masked = transaction.card.masked_card_number if transaction.card else 'N/A'
+    subject = f"[CCPay URGENT] Suspicious Activity Flagged on Card {masked} (Risk Score: {risk_score})"
+
+    body = f"""URGENT SECURITY ALERT: SUSPICIOUS ACTIVITY DETECTED
+
+Dear {user.full_name or user.username},
+
+Our automated Fraud Detection System has flagged a recent transaction on your account as SUSPICIOUS.
+
+Alert Details:
+---------------------------------------------
+Rule Triggered:    {rule_triggered}
+Risk Score:        {risk_score} / 100
+Transaction ID:    {transaction.transaction_id}
+Amount:            ₹{amount:,.2f} {transaction.currency}
+Card:              {masked}
+Merchant:          {transaction.merchant_name or 'N/A'}
+IP Address:        {transaction.ip_address or 'Unknown'}
+Location:          {transaction.location or 'Unknown'}
+Detection Reason:  {details or transaction.fraud_reason or 'Anomaly detected by automated rules'}
+Fraud Status:      {transaction.fraud_status}
+
+ACTION REQUIRED:
+If this transaction was authorized by you, you can verify it in your CCPay portal.
+If you did NOT recognize this transaction, please immediately BLOCK YOUR CARD in the CCPay dashboard or contact fraud-desk@ccpay.com.
+
+CCPay Automated Fraud & Risk Prevention Team
+"""
+    return _send_and_log(
+        recipient_user=user,
+        subject=subject,
+        message=body,
+        action_tag='FRAUD_FLAG',
+        description=f"Fraud alert sent for {transaction.transaction_id} [Rule: {rule_triggered}, Risk: {risk_score}]"
+    )
+

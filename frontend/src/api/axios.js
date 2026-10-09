@@ -17,6 +17,9 @@ const fastapiAPI = axios.create({
 
 // Request interceptor helper - attach JWT access token
 const attachAuthToken = (config) => {
+  if (config.url && (config.url.includes('/auth/login') || config.url.includes('/auth/register'))) {
+    return config;
+  }
   const token = localStorage.getItem('access_token');
   if (token) {
     config.headers = config.headers || {};

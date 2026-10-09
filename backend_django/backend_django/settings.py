@@ -41,6 +41,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'middleware.SystemMonitoringMiddleware',
 ]
 
 ROOT_URLCONF = 'backend_django.urls'
@@ -63,20 +64,38 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend_django.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('MYSQL_DATABASE', 'credit_card_db'),
-        'USER': os.getenv('MYSQL_USER', 'credit_user'),
-        'PASSWORD': os.getenv('MYSQL_PASSWORD', 'credit_pass'),
-        'HOST': os.getenv('MYSQL_HOST', 'db'),
-        'PORT': os.getenv('MYSQL_PORT', '3306'),
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+import sys
+
+try:
+    import MySQLdb  # noqa: F401
+    has_mysqldb = True
+except ImportError:
+    has_mysqldb = False
+
+use_sqlite = os.getenv('USE_SQLITE', 'False').lower() == 'true'
+
+if use_sqlite or not has_mysqldb or ('test' in sys.argv and not os.getenv('MYSQL_HOST')):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3' if hasattr(BASE_DIR, '__truediv__') else os.path.join(BASE_DIR, 'db.sqlite3'),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.getenv('MYSQL_DATABASE', 'credit_card_db'),
+            'USER': os.getenv('MYSQL_USER', 'credit_user'),
+            'PASSWORD': os.getenv('MYSQL_PASSWORD', 'credit_pass'),
+            'HOST': os.getenv('MYSQL_HOST', 'db'),
+            'PORT': os.getenv('MYSQL_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

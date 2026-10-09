@@ -69,98 +69,115 @@ Get-Content database_dump.sql | docker compose exec -T db mysql -uroot -p<MYSQL_
 
 ## Features by module
 
-1. **Authentication** - register, JWT login, logout (refresh token blacklisted), hashed passwords, protected routes
-2. **Card management** - add, list, delete, set default; only the masked number and last 4 digits are stored
-3. **Payments (FastAPI)** - simulated payment, `PENDING` then `SUCCESS` or `FAILED`
-4. **Transactions** - history with filters (date, amount, status), admin CSV export
-5. **Admin panel** - users, cards, transactions, daily payment summary, audit logs
-6. **Frontend** - Register, Login, Dashboard, Add Card, Make Payment, Transaction History, Admin Dashboard
-7. **Database** - users, cards, transactions, admin_logs, payment_logs
-8. **Security** - see below
-9. **API documentation** - Swagger for Django and FastAPI, Postman collection
-10. **Docker** - Dockerfile per service plus docker-compose
-11. **Testing** - 37 unit tests (auth, cards, transactions), 80% coverage
-12. **Git and docs** - conventional commit messages, this README
+1. **Authentication & RBAC** - Register, JWT login, logout (token blacklisted), hashed passwords, protected routes. Full Role-Based Access Control (`ADMIN`, `SUPPORT`, `READ_ONLY`, `CUSTOMER`) with fine-grained endpoint guards.
+2. **Card Management** - Add, list, delete, set default, block/unblock, credit limit updates. Masked number and last 4 digits only. Strict RBAC enforcement (`READ_ONLY` blocked from mutation).
+3. **Payments (FastAPI)** - High-performance payment simulation (`PENDING` -> `SUCCESS`/`FAILED`), automated payment logs, and dashboard metrics.
+4. **Transaction Management & Advanced Search** - Multi-criteria filtering (status, min/max amount, date range, masked card search), server-side ordering, and admin CSV exports.
+5. **Real-Time Fraud Detection Engine** - Rule-based anomaly evaluation (rapid high-value velocity >= ₹10,000 in 10m, rapid geo-hopping across locations/devices in 15m, limit anomalies), fraud scoring, automatic flagging, email alerts, and admin review audit trail.
+6. **Card Usage Analytics & Data Visualization** - Interactive responsive SVG charts (Monthly spending trend line chart, Category expense breakdown pie chart, Credit utilization radial gauge). Zero bloated chart dependencies.
+7. **Automated Notification System** - SMTP/Console email dispatch for transactions > ₹5,000, card block/unblock events, available credit limit < 10%, and detected fraud attempts.
+8. **Monthly Statement & Executive PDF/CSV Generation** - ReportLab financial statement generation with customer breakdown, transaction history, and summary tables. Executive Analytics summary in CSV and PDF formats.
+9. **System Health & Telemetry Monitoring** - Request latency tracking, endpoint traffic breakdown, error rate analytics, and real-time health indicator in the Admin Dashboard.
+10. **Admin Panel** - User management, card security actions (block/unblock, credit limits), transaction monitoring, fraud investigation queues, and comprehensive audit logs.
+11. **Frontend (React + Tailwind CSS)** - Clean, modern, responsive UI with dark/light mode toggle (persisted via React Context & localStorage), loading skeleton states, modal workflows, and responsive data tables.
+12. **Database (MySQL 8)** - Normalized schema for users, cards, transactions, fraud_logs, admin_logs, and system_metrics.
+13. **Security Architecture** - No CVV storage, PBKDF2 password encryption, JWT authentication, parameterized SQL / ORM injection prevention, CORS security.
+14. **API Documentation & Testing** - Django Swagger/ReDoc, FastAPI Swagger, comprehensive Postman Collection (9 folders, 38+ requests), and 62 unit tests (100% passing).
 
-## API documentation
+## API Documentation
 
-Interactive docs: Django `/api/docs/`, FastAPI `/docs`.
-Postman collection: `Credit_Card_Payment_System.postman_collection.json` (28 requests; run folders 1 to 5 in order).
+- **Django Swagger UI:** `http://localhost:8000/api/docs/`
+- **Django ReDoc:** `http://localhost:8000/api/redoc/`
+- **FastAPI Swagger UI:** `http://localhost:8001/docs`
+- **Postman Collection:** `Credit_Card_Payment_System.postman_collection.json` (9 comprehensive folders covering all authentication, cards, payments, analytics, fraud review, telemetry, and statements).
 
 ### Django API (`http://localhost:8000/api`)
 
+| Method | Endpoint | Description | Role / Permission |
+|---|---|---|---|
+| POST | `/auth/register/` | Register user | Public |
+| POST | `/auth/login/` | Obtain JWT access & refresh tokens | Public |
+| POST | `/auth/logout/` | Blacklist refresh token | Authenticated |
+| POST | `/auth/token/refresh/` | Renew JWT access token | Authenticated |
+| GET, PUT | `/auth/profile/` | View or update profile details | Authenticated |
+| POST | `/auth/change-password/` | Change password securely | Authenticated |
+| GET, POST | `/cards/` | List or add cards (masked only) | Authenticated (Write blocked for READ_ONLY) |
+| GET, DELETE | `/cards/{id}/` | Card detail or delete card | Authenticated (Delete blocked for READ_ONLY) |
+| POST | `/cards/{id}/set-default/` | Set card as default | Authenticated |
+| POST | `/transactions/pay/` | Make payment (runs fraud check + FastAPI) | Authenticated |
+| GET | `/transactions/` | History. Advanced search: `card_search`, `status`, `min_amount`, `max_amount`, `date_from`, `date_to`, `ordering` | Authenticated |
+| GET | `/transactions/{id}/` | Single transaction detail | Authenticated |
+| GET | `/transactions/statement/pdf/` | Download branded monthly PDF statement | Authenticated |
+| GET | `/transactions/analytics/summary/` | User spending summary & utilization | Authenticated |
+| GET | `/transactions/analytics/monthly/` | Monthly expense trends (last 6 months) | Authenticated |
+| GET | `/transactions/analytics/categories/` | Category-wise expense distribution | Authenticated |
+| GET | `/transactions/analytics/utilization/` | Per-card credit utilization ratio | Authenticated |
+| GET | `/admin-panel/dashboard/` | High-level metrics | Admin / Support / Read-Only |
+| GET | `/admin-panel/daily-summary/` | Daily payment aggregations | Admin / Support / Read-Only |
+| GET | `/admin-panel/users/` | List system users | Admin / Support / Read-Only |
+| PATCH | `/admin-panel/users/{id}/toggle/` | Enable / disable user account | Admin only |
+| GET | `/admin-panel/cards/` | View all customer cards | Admin / Support / Read-Only |
+| POST | `/admin-panel/cards/{id}/block/` | Block / unblock card (sends email alert) | Admin / Support |
+| POST | `/admin-panel/cards/{id}/credit-limit/`| Update credit limit | Admin only |
+| GET | `/admin-panel/cards/{id}/activity/` | Inspect audit & transaction activity | Admin / Support / Read-Only |
+| GET | `/admin-panel/transactions/` | View all global transactions | Admin / Support / Read-Only |
+| GET | `/admin-panel/transactions/export/` | Export transactions to CSV | Admin / Support |
+| GET | `/admin-panel/fraud-logs/` | List flagged suspicious transactions | Admin / Support / Read-Only |
+| POST | `/admin-panel/fraud-logs/{id}/review/`| Update fraud review status & notes | Admin / Support |
+| GET | `/admin-panel/system-health/` | System health, latency & error telemetry | Admin / Support |
+| GET | `/admin-panel/analytics/export/csv/` | Export system-wide analytics summary CSV | Admin / Support |
+| GET | `/admin-panel/analytics/export/pdf/` | Export executive analytics summary PDF | Admin / Support |
+| GET | `/admin-panel/logs/` | System audit logs | Admin / Support |
+
+### FastAPI Payment Service (`http://localhost:8001`)
+
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/auth/register/` | Register a user |
-| POST | `/auth/login/` | Login, returns access and refresh JWT |
-| POST | `/auth/logout/` | Blacklist the refresh token |
-| POST | `/auth/token/refresh/` | Get a new access token |
-| GET, PUT | `/auth/profile/` | View or update profile |
-| POST | `/auth/change-password/` | Change password |
-| GET, POST | `/cards/` | List or add cards |
-| GET, DELETE | `/cards/{id}/` | Card detail or delete |
-| POST | `/cards/{id}/set-default/` | Set default card |
-| POST | `/transactions/pay/` | Make a payment (calls FastAPI) |
-| GET | `/transactions/` | History. Filters: `status`, `date_from`, `date_to`, `amount_min`, `amount_max` |
-| GET | `/transactions/{transaction_id}/` | Transaction detail |
-| GET | `/admin-panel/dashboard/` | Admin statistics (admin only) |
-| GET | `/admin-panel/daily-summary/` | Daily payment summary |
-| GET | `/admin-panel/users/` | List users |
-| PATCH | `/admin-panel/users/{id}/toggle/` | Activate or deactivate a user |
-| GET | `/admin-panel/cards/` | All cards |
-| GET | `/admin-panel/transactions/` | All transactions |
-| GET | `/admin-panel/transactions/export/` | Download CSV |
-| GET | `/admin-panel/logs/` | Audit logs |
+| GET | `/dashboard/summary` | User dashboard summary (total spent, available credit, month spending, last 5 transactions) |
+| POST | `/api/payments/process` | Simulate payment (`PENDING` -> `SUCCESS`/`FAILED`) |
+| GET | `/api/payments/status/{txn_id}` | Retrieve payment status |
+| GET | `/api/payments/logs` | Query raw payment simulation logs |
+| POST | `/api/auth/verify-token` | Verify JWT token validity |
+| GET | `/health` | Service health status |
 
-### FastAPI payment service (`http://localhost:8001`)
+## Database Schema
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/dashboard/summary` | User dashboard metrics (total spent, available credit, month spending, last 5 txns) |
-| POST | `/api/payments/process` | Simulate a payment |
-| GET | `/api/payments/status/{transaction_id}` | Payment status |
-| GET | `/api/payments/logs` | Payment logs |
-| POST | `/api/auth/verify-token` | Verify a JWT |
-| GET | `/health` | Health check |
+- **users** - id, email, username, full_name, phone, role (`ADMIN`, `SUPPORT`, `READ_ONLY`, `CUSTOMER`), password (PBKDF2), is_active, is_staff, is_admin, is_superuser, date_joined, last_login
+- **cards** - id, user_id (FK), card_holder_name, last_four_digits, masked_card_number, card_type, expiry_month, expiry_year, bank_name, is_default, is_blocked, credit_limit, created_at, updated_at
+- **transactions** - id, user_id (FK), card_id (FK), amount, currency, description, merchant_name, category, status (`PENDING`, `SUCCESS`, `FAILED`), fraud_status (`CLEAN`, `FLAGGED`, `BLOCKED`), fraud_reason, ip_address, device_info, location, transaction_id, failure_reason, created_at, updated_at
+- **fraud_logs** - id, transaction_id (FK), user_id (FK), card_id (FK), rule_triggered, risk_score, details, ip_address, device_info, location, review_status (`PENDING_REVIEW`, `CONFIRMED_FRAUD`, `DISMISSED`), reviewed_by (FK), review_notes, reviewed_at, timestamp
+- **admin_logs** - id, user_id (FK), action, actor_role, target_type, target_id, description, ip_address, timestamp
+- **system_metrics** - id, endpoint, method, status_code, response_time_ms, user_id (FK), ip_address, error_details, timestamp
+- **payment_logs** - id, transaction_id, amount, status, error_message, timestamp (FastAPI)
 
-## Database schema
+Schema definitions: `database_schema.sql`. Pre-populated snapshot: `database_dump.sql`.
 
-**users** - id, email (unique), username (unique), full_name, phone, password (hashed), is_active, is_staff, is_admin, date_joined, last_login
+## Security Implementations
 
-**cards** - id, user_id (FK users), card_holder_name, last_four_digits, masked_card_number, card_type (CREDIT/DEBIT), expiry_month, expiry_year, bank_name, is_default, created_at, updated_at
-
-**transactions** - id, user_id (FK users), card_id (FK cards), amount (12,2), currency, description, merchant_name, status (PENDING/SUCCESS/FAILED), transaction_id (unique), failure_reason, created_at, updated_at
-
-**admin_logs** - id, user_id (FK users), action, description, ip_address, timestamp
-
-**payment_logs** - written by the FastAPI service for every processed payment
-
-~~~
-users 1 --- * cards
-users 1 --- * transactions
-cards 1 --- * transactions
-users 1 --- * admin_logs
-~~~
-
-Full SQL: `database_schema.sql`. Data dump: `database_dump.sql`.
-
-## Security
-
-- Full card numbers and CVV are never stored. Only the masked number and last 4 digits are saved.
-- Passwords are hashed (Django PBKDF2); there are no plain-text passwords.
-- JWT authentication on every protected route. Access token 30 min, refresh token 7 days, blacklisted on logout.
-- Admin routes return 403 for normal users.
-- Input validation through DRF serializers and Pydantic models.
-- SQL injection protection through the Django and SQLAlchemy ORMs (no raw SQL built from user input).
-- CORS restricted to the frontend origin. Secrets live in `.env`, which is not committed.
+- **Strict CVV Prohibition:** CVV is never collected in the API or saved anywhere in the database.
+- **Card Masking:** Card numbers are instantly transformed to `****-****-****-1234` before persistence.
+- **Cryptographic Password Hashing:** Django PBKDF2 with SHA-256 (1,000,000 iterations).
+- **JWT Authorization:** Standard RFC 7519 Bearer Tokens with HS256 encryption. Tokens validated across both Django and FastAPI. Refresh token blacklisting on logout prevents replay.
+- **Role-Based Access Control (RBAC):** Hierarchical permissions across Admin, Support, Read-Only, and Customer tiers with dedicated permission classes and 403 Forbidden enforcement.
+- **Rule-Based Fraud Detection:** Real-time anomaly detection preventing rapid velocity abuse, geographic displacement anomalies, and limit breaches.
+- **SQL Injection Prevention:** 100% parameterization via Django ORM and SQLAlchemy.
+- **Audit Logging:** Comprehensive tracing of administrative interventions (card blocking, limit changes, fraud dismissals, exports).
 
 ## Testing
 
+Comprehensive test suite covering all modules:
+
 ~~~bash
-docker compose exec django sh -c "coverage run --source=accounts,cards,transactions,admin_panel manage.py test && coverage report"
+# Run tests inside Docker
+docker compose exec django python manage.py test
+
+# Or run locally with virtual environment
+python manage.py test
 ~~~
 
-37 tests pass: authentication, card management and transactions. Total coverage reported: 80%.
+**Test Suite Results:**
+- **62 tests passed** (0 failures, 0 errors, 100% pass rate).
+- Validates Authentication, Role Permissions, Card Encryption & Masking, Payment Processing, Fraud Rule Logic, Analytics Calculation, Statement Generation, and Health Monitoring.
 
 ## Screenshots
 
@@ -169,18 +186,20 @@ docker compose exec django sh -c "coverage run --source=accounts,cards,transacti
 | ![Login](screenshots/login.png) | ![Register](screenshots/register.png) |
 | ![Dashboard](screenshots/dashboard.png) | ![Cards](screenshots/cards.png) |
 | ![Payment](screenshots/payment.png) | ![Transactions](screenshots/transactions.png) |
-| ![Admin dashboard](screenshots/admin-dashboard.png) | ![Admin users](screenshots/admin-users.png) |
-| ![Admin transactions](screenshots/admin-transactions.png) | ![Django Swagger](screenshots/swagger-django.png) |
+| ![Admin Dashboard](screenshots/admin-dashboard.png) | ![Admin Users](screenshots/admin-users.png) |
+| ![Admin Transactions](screenshots/admin-transactions.png) | ![Django Swagger](screenshots/swagger-django.png) |
 | ![FastAPI Swagger](screenshots/swagger-fastapi.png) | |
 
-## Project structure
+## Project Structure
 
 ~~~
-backend_django/    Django project and apps: accounts, cards, transactions, admin_panel
-backend_fastapi/   FastAPI payment service
-frontend/          React + Tailwind app (Nginx in Docker)
-db/                MySQL Dockerfile
-docker-compose.yml
-database_schema.sql, database_dump.sql
-Credit_Card_Payment_System.postman_collection.json
+backend_django/          Django project and apps: accounts, cards, transactions, admin_panel, notifications
+backend_fastapi/         FastAPI payment simulation engine and dashboard metrics
+frontend/                React + Tailwind CSS SPA with Dark Mode Context & SVG Analytics
+db/                      MySQL 8 Docker configurations
+database_schema.sql      Complete MySQL 8 DDL schema
+database_dump.sql        Complete MySQL 8 pre-seeded dataset
+Credit_Card_Payment_System.postman_collection.json  Full Postman suite (9 folders)
+docker-compose.yml       Orchestration for Frontend, Django, FastAPI, MySQL
+README.md                Documentation & Setup Guide
 ~~~

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { dashboardAPI, cardAPI, transactionAPI } from '../api/services';
 import Navbar from '../components/Navbar';
 import toast from 'react-hot-toast';
+import { SpendingLineChart, CategoryPieChart, UtilizationGauge } from '../components/Charts';
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
@@ -11,6 +12,9 @@ export default function DashboardPage() {
 
   const [summary, setSummary] = useState(null);
   const [cards, setCards] = useState([]);
+  const [monthlyData, setMonthlyData] = useState([]);
+  const [categoryData, setCategoryData] = useState([]);
+  const [utilizationData, setUtilizationData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [jwtError, setJwtError] = useState(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -54,6 +58,20 @@ export default function DashboardPage() {
         setCards(cardsResp.data?.cards || (Array.isArray(cardsResp.data) ? cardsResp.data : []));
       } catch (cardErr) {
         console.warn('Unable to load cards list:', cardErr);
+      }
+
+      // 3. Fetch comprehensive analytics for charts
+      try {
+        const [monthResp, catResp, utilResp] = await Promise.allSettled([
+          transactionAPI.getMonthlyAnalytics(6),
+          transactionAPI.getCategoryAnalytics(),
+          transactionAPI.getUtilizationAnalytics()
+        ]);
+        if (monthResp.status === 'fulfilled') setMonthlyData(monthResp.value.data?.monthly_summary || []);
+        if (catResp.status === 'fulfilled') setCategoryData(catResp.value.data?.categories || []);
+        if (utilResp.status === 'fulfilled') setUtilizationData(utilResp.value.data);
+      } catch (analyticsErr) {
+        console.warn('Unable to load analytics charts:', analyticsErr);
       }
     } catch (err) {
       console.error('Failed to fetch dashboard summary:', err);
@@ -351,6 +369,24 @@ export default function DashboardPage() {
                   Current billing cycle spending
                 </p>
               </div>
+            </div>
+
+            {/* Interactive Analytics & Visual Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              <div className="lg:col-span-2">
+                <SpendingLineChart data={monthlyData} title="Monthly Spending Trends (Line Chart)" />
+              </div>
+              <div>
+                <UtilizationGauge
+                  percentage={utilizationData?.overall_utilization_percentage || 0}
+                  totalLimit={utilizationData?.total_credit_limit || 50000}
+                  totalSpent={utilizationData?.total_spent || summary?.total_amount_spent || 0}
+                />
+              </div>
+            </div>
+
+            <div className="mb-8">
+              <CategoryPieChart categories={categoryData} title="Category-Wise Expense Distribution (Pie Chart)" />
             </div>
 
             {/* Main Content Grid: Last 5 Transactions + Saved Cards */}
